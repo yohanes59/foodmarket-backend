@@ -16,7 +16,7 @@ class UserController extends Controller
 
     use PasswordValidationRules;
 
-     public function login(Request $request)
+    public function login(Request $request)
     {
         try {
             // validasi input
@@ -95,5 +95,15 @@ class UserController extends Controller
         $token = $request->user()->currentAccessToken()->delete();
 
         return ResponseFormatter::success($token, 'Token Revoked');
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $data = $request->all();
+
+        $user = Auth::user();
+        $user->update($data);
+
+        return ResponseFormatter::success($user, 'Profile Updated');
     }
 }
