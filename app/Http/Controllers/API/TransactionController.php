@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\API;
 
+use Exception;
+use Midtrans\Snap;
+use Midtrans\Config;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use App\Helpers\ResponseFormatter;
@@ -57,5 +60,62 @@ class TransactionController extends Controller
         $transaction->update($request->all());
 
         return ResponseFormatter::success($transaction, 'Transaksi berhasil diperbarui');
+    }
+
+    public function checkout(Request $request)
+    {
+        $request->validate([
+            'food_id' => 'required|exists:food,id',
+            'user_id' => 'required|exists:users,id',
+            'quantity' => 'required',
+            'total' => 'required',
+            'status' => 'required',
+        ]);
+
+        $transaction = Transaction::create([
+            'food_id' => $request->food_id,
+            'user_id' => $request->user_id,
+            'quantity' => $request->quantity,
+            'total' => $request->total,
+            'status' => $request->status,
+            'payment_url' => '',
+        ]);
+
+        // Konfigurasi Midtrans
+        Config::$serverKey = config('services.midtrans.serverKey');
+        Config::$isProduction = config('services.midtrans.isProduction');
+        Config::$isSanitized = config('services.midtrans.isSanitized');
+        Config::$is3ds = config('services.midtrans.is3ds');
+
+        // Memanggil transaksi yang sudah dibuat
+        $transaction = Transaction::with(['food', 'user'])->find($transaction->id);
+
+        // Membuat Transaksi Midtrans
+        $midtrans = [
+            'transaction_details' => [
+                'order_id' => $transaction->id,
+                'gross_amount' => (int) $transaction->total,
+            ],
+            'customer_details' => [
+                'first_name' => $transaction->user->name,
+                'email' => $transaction->user->email,
+            ],
+            'enabled_payments' => ['gopay', 'bank_transfer'],
+            'vtweb' => []
+        ];
+
+        // Memanggil Midtrans
+        try {
+            // Ambil Halaman Payment Midtrans
+            $paymentUrl = Snap::createTransaction($midtrans)->redirect_url;
+
+            $transaction->payment_url = $paymentUrl;
+            $transaction->save();
+
+            // Mengembalikan Data ke API
+            return ResponseFormatter::success($transaction, 'Transaksi Berhasil');
+        } catch (Exception $e) {
+            return ResponseFormatter::error($e->getMessage(), 'Transaksi gagal');
+        }
     }
 }
