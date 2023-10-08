@@ -27,7 +27,7 @@ class UserController extends Controller
             ]);
 
             // cek credentials (login)
-            $credentials = request('email', 'password');
+            $credentials = request(['email', 'password']);
             if (!Auth::attempt($credentials)) {
                 return ResponseFormatter::error([
                     'message' => 'Unauthorized'
@@ -67,11 +67,11 @@ class UserController extends Controller
             User::create([
                 'name' => $request->name,
                 'email' => $request->email,
+                'password' => Hash::make($request->password),
                 'address' => $request->address,
+                'city' => $request->city,
                 'houseNumber' => $request->houseNumber,
                 'phoneNumber' => $request->phoneNumber,
-                'city' => $request->city,
-                'password' => Hash::make($request->password),
             ]);
 
             $user = User::where('email', $request->email)->first();
