@@ -36,9 +36,12 @@ class TransactionController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Transaction $transaction)
     {
-        //
+        $transaction = $transaction->with(['food', 'user'])->firstOrFail();
+        return view('transaction.detail', [
+            'item' => $transaction
+        ]);
     }
 
     /**
@@ -63,5 +66,14 @@ class TransactionController extends Controller
     public function destroy(string $id)
     {
         //
+    }
+
+    public function changeStatus(Request $request, $id, $status)
+    {
+        $transaction = Transaction::findOrFail($id);
+
+        $transaction->status = $status;
+        $transaction->save();
+        return redirect()->route('transaction.show', $id);
     }
 }
